@@ -1,2 +1,5 @@
 .env
 /movies_datasets
+.venv/
+__pycache__/
+*.pyc

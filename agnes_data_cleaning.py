@@ -1,3 +1,24 @@
+from __future__ import annotations
+
+import ast
+import json
+import math
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
+
+DATA_DIR = Path("movies_datasets")
+METADATA_FILE = DATA_DIR / "movies_metadata.csv"
+CREDITS_FILE = DATA_DIR / "credits.csv"
+KEYWORDS_FILE = DATA_DIR / "keywords.csv"
+RATINGS_FILE = DATA_DIR / "ratings.csv"
+RATINGS_SMALL_FILE = DATA_DIR / "ratings_small.csv"
+LINKS_FILE = DATA_DIR / "links.csv"
+
+# Keep True for development; use the full ratings.csv for the final import.
+USE_SMALL_RATINGS_FOR_DEVELOPMENT = True
 
 NESTED_FIELDS = {
     "movies_metadata": [

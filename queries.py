@@ -98,6 +98,17 @@ class QueryProgram:
                     }
                 },
                 {
+                    "$set": {
+                        "distinct_genres": {
+                            "$filter": {
+                                "input": "$distinct_genres",
+                                "as": "genre",
+                                "cond": {"$ne": ["$$genre", None]},
+                            }
+                        }
+                    }
+                },
+                {
                     "$project": {
                         "actor": 1,
                         "distinct_genre_count": {"$size": "$distinct_genres"},

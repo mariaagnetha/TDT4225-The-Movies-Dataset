@@ -8,7 +8,7 @@ DATA_DIR = Path("movies_datasets")
 RATINGS_FILE = DATA_DIR / "ratings.csv"
 RATINGS_SMALL_FILE = DATA_DIR / "ratings_small.csv"
 # Use the smaller file while developing; switch to False for the full ratings dataset.
-USE_SMALL_RATINGS_FOR_DEVELOPMENT = True
+USE_SMALL_RATINGS_FOR_DEVELOPMENT = False
 
 
 def clean_shifted_rows(movies_metadata):

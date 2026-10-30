@@ -1,8 +1,14 @@
 import ast
+import json
 from pathlib import Path
+
 import pandas as pd
 
 DATA_DIR = Path("movies_datasets")
+RATINGS_FILE = DATA_DIR / "ratings.csv"
+RATINGS_SMALL_FILE = DATA_DIR / "ratings_small.csv"
+# Use the smaller file while developing; switch to False for the full ratings dataset.
+USE_SMALL_RATINGS_FOR_DEVELOPMENT = True
 
 
 def clean_shifted_rows(movies_metadata):
@@ -90,10 +96,15 @@ def clean_empty_strings(movies_metadata):
 def parse_nested_field(val):
     if pd.isna(val):
         return None
+    if not isinstance(val, str):
+        return val
     try:
-        return ast.literal_eval(val)
-    except (ValueError, SyntaxError):
-        return None
+        return json.loads(val)
+    except (json.JSONDecodeError, TypeError):
+        try:
+            return ast.literal_eval(val)
+        except (ValueError, SyntaxError):
+            return None
 
 
 def clean_nested_fields(movies_metadata):
@@ -120,6 +131,24 @@ def clean_nested_fields(movies_metadata):
         movies_metadata[col] = movies_metadata[col].apply(
             lambda x: [] if x is None else x
         )
+
+    # Derived features used in the EDA; keep the original genre order.
+    movies_metadata["release_year"] = movies_metadata["release_date"].map(
+        lambda value: value.year if pd.notna(value) else None
+    )
+    movies_metadata["release_decade"] = movies_metadata["release_year"].map(
+        lambda year: (year // 10) * 10 if pd.notna(year) else None
+    )
+    movies_metadata["primary_genre"] = movies_metadata["genres"].map(
+        lambda genres: (
+            genres[0].get("name")
+            if isinstance(genres, list)
+            and genres
+            and isinstance(genres[0], dict)
+            and isinstance(genres[0].get("name"), str)
+            else None
+        )
+    )
     return movies_metadata
 
 
@@ -146,6 +175,25 @@ def clean_credits(credits):
         print(f"{col}: {failed_parsing.sum()} values could not be parsed")
         credits[col] = credits[col].apply(lambda x: [] if x is None else x)
 
+    def normalize_cast_order(cast):
+        if not isinstance(cast, list):
+            return cast
+        normalized_cast = []
+        for member in cast:
+            if not isinstance(member, dict):
+                normalized_cast.append(member)
+                continue
+            member = member.copy()
+            if "order" in member:
+                try:
+                    order = float(member["order"])
+                    member["order"] = int(order) if order.is_integer() else None
+                except (TypeError, ValueError, OverflowError):
+                    member["order"] = None
+            normalized_cast.append(member)
+        return normalized_cast
+
+    credits["cast"] = credits["cast"].apply(normalize_cast_order)
     credits = credits.sort_values("crew", key=lambda x: x.apply(len), ascending=False)
     credits = credits.drop_duplicates(subset=["id"], keep="first")
     print("Rows after removal of duplicate ids (credits):", credits.shape[0])
@@ -167,8 +215,18 @@ def clean_keywords(keywords):
 
 def clean_ratings(ratings, links, movie_ids):
     print("Original ratings rows:", ratings.shape[0])
+
+    # Normalize numeric identifiers and rating values before joining datasets.
+    for col in ["userId", "movieId", "rating"]:
+        ratings[col] = pd.to_numeric(ratings[col], errors="coerce")
+    ratings = ratings.dropna(subset=["userId", "movieId"]).copy()
+    ratings["userId"] = ratings["userId"].astype(int)
+    ratings["movieId"] = ratings["movieId"].astype(int)
+
+    # Normalize Unix timestamps to numbers, then interpret them consistently as UTC.
+    timestamp_values = pd.to_numeric(ratings["timestamp"], errors="coerce")
     ratings["timestamp"] = pd.to_datetime(
-        ratings["timestamp"], unit="s", errors="coerce"
+        timestamp_values, unit="s", errors="coerce", utc=True
     )
     print(
         f"timestamp: {(ratings['timestamp'].isna()).sum()} values not able to convert"
@@ -206,5 +264,8 @@ if __name__ == "__main__":
     keywords = pd.read_csv(DATA_DIR / "keywords.csv")
     keywords = clean_keywords(keywords)
     links = pd.read_csv(DATA_DIR / "links.csv")
-    ratings = pd.read_csv(DATA_DIR / "ratings.csv")
+    ratings_path = (
+        RATINGS_SMALL_FILE if USE_SMALL_RATINGS_FOR_DEVELOPMENT else RATINGS_FILE
+    )
+    ratings = pd.read_csv(ratings_path, low_memory=False)
     ratings = clean_ratings(ratings, links, movies_metadata["id"])

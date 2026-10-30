@@ -20,3 +20,6 @@ Exercise 3: Group project in TDT4225 Very Large, Distributed Data Volumes
 
   3. Start MongoDB with `docker compose up -d`
   4. Run `eda.ipynb` for exploratory data analysis
+  5. Run `data_cleaning.py` to clean the datasets
+  6. Run `insert_data.py` to insert data into the MongoDB database
+  7. Run `queries.py` to run the queries

@@ -50,8 +50,8 @@ def clean_numeric_columns(movies_metadata):
     zero_vote_count = movies_metadata["vote_count"] == 0
     print(f"vote_average: {zero_vote_count.sum()} values replaced with None")
     movies_metadata.loc[zero_vote_count, "vote_average"] = None
-    movies_metadata["vote_count"] = movies_metadata["vote_count"].astype("Int64")
-
+    for col in ["budget", "revenue", "runtime", "vote_count"]:
+        movies_metadata[col] = movies_metadata[col].astype("Int64")
     return movies_metadata
 
 
@@ -166,7 +166,6 @@ def clean_keywords(keywords):
 
 
 def clean_ratings(ratings, links, movie_ids):
-    ratings = ratings.copy()
     print("Original ratings rows:", ratings.shape[0])
     ratings["timestamp"] = pd.to_datetime(
         ratings["timestamp"], unit="s", errors="coerce"
@@ -175,6 +174,7 @@ def clean_ratings(ratings, links, movie_ids):
         f"timestamp: {(ratings['timestamp'].isna()).sum()} values not able to convert"
     )
     ratings = ratings.merge(links[["movieId", "tmdbId"]], on="movieId", how="left")
+    ratings = ratings.drop(columns=["movieId"])
     has_movie = ratings["tmdbId"].isin(movie_ids)
     print(
         f"ratings: {(~has_movie).sum()} rows could not be linked to a movie in movies_metadata"

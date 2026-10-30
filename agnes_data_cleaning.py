@@ -105,7 +105,8 @@ def convert_numeric_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
                 number = pd.to_numeric(value, errors="raise")
 
                 if (
-                    field in ("budget", "revenue", "runtime", "vote_count")  # noqa: B023
+                    field
+                    in ("budget", "revenue", "runtime", "vote_count")  # noqa: B023
                     and math.isfinite(float(number))
                     and float(number).is_integer()
                 ):
